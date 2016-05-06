@@ -28,7 +28,7 @@ public class LuceneIndexer {
 	private static List<Topic> topics;
 	public static void main(String[] args) {
         
-		indexDirectory();
+		//indexDirectory();
 		getTopics();
 		searchAllTopics();
 		
@@ -197,7 +197,7 @@ public class LuceneIndexer {
             	org.apache.lucene.document.Document document = indexSearcher.doc(scoreDoc.doc);
             	String docno=String.valueOf(document.getField("docno"));
             	docno=docno.substring(docno.indexOf(">")+1, docno.indexOf("</"));
-            	String line=t.getId()+" Q "+docno+" "+ranking+" "+scoreDoc.score+" assignment1";
+            	String line=t.getId()+" Q0 "+docno+" "+ranking+" "+scoreDoc.score+" assignment1";
             	System.out.println(line);
             	writer.println(line);
                 ranking++;
