@@ -31,6 +31,7 @@ public class LuceneIndexer {
 		indexDirectory();
 		getTopics();
 		searchAllTopics();
+		
     }   
 	
 	private static List<File> getFilesInDirectory(File dir) {
@@ -179,8 +180,10 @@ public class LuceneIndexer {
 		 }
 	 }
      
-    private static void search(Topic t,String text) {  
-        try {   
+    private static void search(Topic t,String text) { 
+    	PrintWriter writer;
+        try { 
+        	writer =new PrintWriter(new FileWriter("lucene-result.txt",true));
             Path path = Paths.get("indexes");
             Directory directory = FSDirectory.open(path);       
             IndexReader indexReader =  DirectoryReader.open(directory);
@@ -194,10 +197,13 @@ public class LuceneIndexer {
             	org.apache.lucene.document.Document document = indexSearcher.doc(scoreDoc.doc);
             	String docno=String.valueOf(document.getField("docno"));
             	docno=docno.substring(docno.indexOf(">")+1, docno.indexOf("</"));
-            	System.out.println(t.getId()+" Q "+docno+" "+ranking+" "+scoreDoc.score+" assignment1");
+            	String line=t.getId()+" Q "+docno+" "+ranking+" "+scoreDoc.score+" assignment1";
+            	System.out.println(line);
+            	writer.println(line);
                 ranking++;
                 
             }
+            writer.close();
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
