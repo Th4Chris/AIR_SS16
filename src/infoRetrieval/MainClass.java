@@ -37,6 +37,9 @@ public class MainClass {
 		
     }   
 	
+	/*
+	 * Function returns list of files in directory
+	 */
 	private static List<File> getFilesInDirectory(File dir) {
 		File[] listOfFiles = dir.listFiles();
 		List<File> res=new ArrayList<File>();
@@ -176,13 +179,55 @@ public class MainClass {
 			}
 			
 	 }
+	 /*
+	  * From each topic take the keywords and use search fc to query the results
+	  */
 	 private static void searchAllTopics(){
 		 for (Topic t:topics) {
 			 String query=t.getTitle().replace(",", " OR");
 			 search(t,query); 
 		 }
 	 }
-     
+
+	/*
+	 * Search for given query
+	 */
+    private static void search(Topic t,String text) { 
+    	PrintWriter writer;
+        try { 
+        	writer =new PrintWriter(new FileWriter("bm25L-result.txt",true));
+            Path path = Paths.get("indexes");
+            Directory directory = FSDirectory.open(path);       
+            IndexReader indexReader =  DirectoryReader.open(directory);
+            IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+            indexSearcher.setSimilarity(new BM25L());
+            MultiFieldQueryParser queryParser = new MultiFieldQueryParser(new String[] {"headline", "text"},new StandardAnalyzer());  
+            Query query = queryParser.parse(text);
+            TopDocs topDocs = indexSearcher.search(query,1000);
+            //System.out.println("totalHits " + topDocs.totalHits);
+           
+            int ranking=1;
+            for (ScoreDoc scoreDoc : topDocs.scoreDocs) {    
+            	org.apache.lucene.document.Document document = indexSearcher.doc(scoreDoc.doc);
+            	String docno=String.valueOf(document.getField("docno"));
+            	docno=docno.substring(docno.indexOf(">")+1, docno.indexOf("</"));
+            	String line=t.getId()+" Q0 "+docno+" "+ranking+" "+scoreDoc.score+" assignment1";
+            	System.out.println(line);
+            	
+            	writer.println(line);
+                ranking++;
+                
+            }
+            writer.close();
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }               
+    }
+    
+	 /*
+	  * Read attached trec_eval output files and create the result file with the desired formatting
+	  */
 	private static void printResultsToTable(){
 		HashMap<Integer,Float> Lucene=new HashMap<Integer,Float>();
 		HashMap<Integer,Float> BM25=new HashMap<Integer,Float>();
@@ -224,52 +269,21 @@ public class MainClass {
 		
 		//print it to out file
 		PrintWriter writer;
-        try { 
-        	writer =new PrintWriter(new FileWriter("table-result.txt",true));
-        	 writer.println("TopicNb \t Lucene \t BM25 \t BM25L");
-           for (int topic:Lucene.keySet()) {
-        	   if (topic!=1000) {
-        		   writer.println(topic+"\t"+Lucene.get(topic)+"\t"+BM25.get(topic)+"\t"+BM25L.get(topic)); 
-        	   }
-        	   else {
-        		   writer.println("AVG \t"+Lucene.get(topic)+"\t"+BM25.get(topic)+"\t"+BM25L.get(topic));  
-        	   }        	   
-           } 
-            writer.close();
-        } catch (Exception e) {
-            // TODO: handle exception
-            e.printStackTrace();
-        }          
+       try { 
+       	writer =new PrintWriter(new FileWriter("table-result.txt",true));
+       	 writer.println("TopicNb \t Lucene \t BM25 \t BM25L");
+          for (int topic:Lucene.keySet()) {
+       	   if (topic!=1000) {
+       		   writer.println(topic+"\t"+Lucene.get(topic)+"\t"+BM25.get(topic)+"\t"+BM25L.get(topic)); 
+       	   }
+       	   else {
+       		   writer.println("AVG \t"+Lucene.get(topic)+"\t"+BM25.get(topic)+"\t"+BM25L.get(topic));  
+       	   }        	   
+          } 
+           writer.close();
+       } catch (Exception e) {
+           // TODO: handle exception
+           e.printStackTrace();
+       }          
 	}
-    private static void search(Topic t,String text) { 
-    	PrintWriter writer;
-        try { 
-        	writer =new PrintWriter(new FileWriter("bm25L-result.txt",true));
-            Path path = Paths.get("indexes");
-            Directory directory = FSDirectory.open(path);       
-            IndexReader indexReader =  DirectoryReader.open(directory);
-            IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-            indexSearcher.setSimilarity(new BM25L());
-            MultiFieldQueryParser queryParser = new MultiFieldQueryParser(new String[] {"headline", "text"},new StandardAnalyzer());  
-            Query query = queryParser.parse(text);
-            TopDocs topDocs = indexSearcher.search(query,1000);
-            //System.out.println("totalHits " + topDocs.totalHits);
-            int ranking=1;
-            for (ScoreDoc scoreDoc : topDocs.scoreDocs) {           
-            	org.apache.lucene.document.Document document = indexSearcher.doc(scoreDoc.doc);
-            	String docno=String.valueOf(document.getField("docno"));
-            	docno=docno.substring(docno.indexOf(">")+1, docno.indexOf("</"));
-            	String line=t.getId()+" Q0 "+docno+" "+ranking+" "+scoreDoc.score+" assignment1";
-            	System.out.println(line);
-            	writer.println(line);
-                ranking++;
-                
-            }
-            writer.close();
-        } catch (Exception e) {
-            // TODO: handle exception
-            e.printStackTrace();
-        }               
-    }
-	 
 }

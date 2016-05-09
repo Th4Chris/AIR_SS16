@@ -1,5 +1,6 @@
 package infoRetrieval;
 import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,18 +14,18 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SmallFloat;
+
+/*
+ * This class is a copy of BM25Similarity, with added delta parameter
+ * and adjusted score function
+ */
 public class BM25L extends Similarity {
 	  private final float k1;
 	  private final float b;
+	  //parameter is default 0.5 and can be adjusted in constructor
 	  private float delta=0.5f;
 
-	  /**
-	   * BM25 with the supplied parameter values.
-	   * @param k1 Controls non-linear term frequency normalization (saturation).
-	   * @param b Controls to what degree document length normalizes tf values.
-	   * @throws IllegalArgumentException if {@code k1} is infinite or negative, or if {@code b} is 
-	   *         not within the range {@code [0..1]}
-	   */
+	  //constructor with added delta parameter
 	  public BM25L(float k1, float b, float delta) {
 	    if (Float.isFinite(k1) == false || k1 < 0) {
 	      throw new IllegalArgumentException("illegal k1 value: " + k1 + ", must be a non-negative finite value");
@@ -39,6 +40,14 @@ public class BM25L extends Similarity {
 	    this.b  = b;
 	    this.delta=delta;
 	  }
+	  
+	  /**
+	   * BM25 with the supplied parameter values.
+	   * @param k1 Controls non-linear term frequency normalization (saturation).
+	   * @param b Controls to what degree document length normalizes tf values.
+	   * @throws IllegalArgumentException if {@code k1} is infinite or negative, or if {@code b} is 
+	   *         not within the range {@code [0..1]}
+	   */
 	  public BM25L(float k1, float b) {
 		    if (Float.isFinite(k1) == false || k1 < 0) {
 		      throw new IllegalArgumentException("illegal k1 value: " + k1 + ", must be a non-negative finite value");
@@ -243,6 +252,7 @@ public class BM25L extends Similarity {
 	      else {
 	    	 return 0;
 	      }
+	   
 	      return weightValue * freq / (freq + norm);
 	    }
 	    
@@ -303,10 +313,14 @@ public class BM25L extends Similarity {
 	    List<Explanation> subs = new ArrayList<>();
 	    subs.add(freq);
 	    subs.add(Explanation.match(k1, "parameter k1"));
+	    float f=freq.getValue();
+	    if (f>0) {
+	    	f+=delta;
+	      }
 	    if (norms == null) {
 	      subs.add(Explanation.match(0, "parameter b (norms omitted for field)"));
 	     return Explanation.match(
-	          (freq.getValue() * (k1 + 1)) / (freq.getValue() + k1),
+	          (f * (k1 + 1)) / (f + k1),
 	          "tfNorm, computed from:", subs);
 	    } else {
 	      float doclen = decodeNormValue((byte)norms.get(doc));
@@ -314,7 +328,7 @@ public class BM25L extends Similarity {
 	      subs.add(Explanation.match(stats.avgdl, "avgFieldLength"));
 	      subs.add(Explanation.match(doclen, "fieldLength"));
 	      return Explanation.match(
-	          (freq.getValue() * (k1 + 1)) / (freq.getValue() + k1 * (1 - b + b * doclen/stats.avgdl)),
+	          (f * (k1 + 1)) / (f + k1 * (1 - b + b * doclen/stats.avgdl)),
 	          "tfNorm, computed from:", subs);
 	    }
 	  }
