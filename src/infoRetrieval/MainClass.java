@@ -11,6 +11,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
@@ -22,15 +23,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
-public class LuceneIndexer {
+public class MainClass {
 	private static List<Topic> topics;
 	public static void main(String[] args) {
         
 		//indexDirectory();
-		getTopics();
-		searchAllTopics();
+		//getTopics();
+		//searchAllTopics();
+		printResultsToTable();
 		
     }   
 	
@@ -180,14 +183,73 @@ public class LuceneIndexer {
 		 }
 	 }
      
+	private static void printResultsToTable(){
+		HashMap<Integer,Float> Lucene=new HashMap<Integer,Float>();
+		HashMap<Integer,Float> BM25=new HashMap<Integer,Float>();
+		HashMap<Integer,Float> BM25L=new HashMap<Integer,Float>();
+		String[] names={"out-lucene.txt","out-bm25.txt","out-bm25L.txt"};
+		int iter=0;
+		for (String s:names) {
+			BufferedReader br = null;
+			try {
+				String sCurrentLine;
+				br = new BufferedReader(new FileReader(s));
+				while ((sCurrentLine = br.readLine()) != null) {
+					if (sCurrentLine.indexOf("map")!=-1) {
+						String[] line=sCurrentLine.split("\t");
+						if (!line[1].equals("all")) {
+							if (iter==0) Lucene.put(Integer.parseInt(line[1]), Float.parseFloat(line[2]));
+							if (iter==1) BM25.put(Integer.parseInt(line[1]), Float.parseFloat(line[2]));
+							if (iter==2) BM25L.put(Integer.parseInt(line[1]), Float.parseFloat(line[2]));
+						} else {
+							if (iter==0) Lucene.put(1000, Float.parseFloat(line[2]));
+							if (iter==1) BM25.put(1000, Float.parseFloat(line[2]));
+							if (iter==2) BM25L.put(1000, Float.parseFloat(line[2]));
+						}
+						
+					}
+				}
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					if (br != null)br.close();
+				} catch (IOException ex) {
+					ex.printStackTrace();
+				}
+			}
+			iter++;
+		}
+		
+		//print it to out file
+		PrintWriter writer;
+        try { 
+        	writer =new PrintWriter(new FileWriter("table-result.txt",true));
+        	 writer.println("TopicNb \t Lucene \t BM25 \t BM25L");
+           for (int topic:Lucene.keySet()) {
+        	   if (topic!=1000) {
+        		   writer.println(topic+"\t"+Lucene.get(topic)+"\t"+BM25.get(topic)+"\t"+BM25L.get(topic)); 
+        	   }
+        	   else {
+        		   writer.println("AVG \t"+Lucene.get(topic)+"\t"+BM25.get(topic)+"\t"+BM25L.get(topic));  
+        	   }        	   
+           } 
+            writer.close();
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }          
+	}
     private static void search(Topic t,String text) { 
     	PrintWriter writer;
         try { 
-        	writer =new PrintWriter(new FileWriter("lucene-result.txt",true));
+        	writer =new PrintWriter(new FileWriter("bm25L-result.txt",true));
             Path path = Paths.get("indexes");
             Directory directory = FSDirectory.open(path);       
             IndexReader indexReader =  DirectoryReader.open(directory);
             IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+            indexSearcher.setSimilarity(new BM25L());
             MultiFieldQueryParser queryParser = new MultiFieldQueryParser(new String[] {"headline", "text"},new StandardAnalyzer());  
             Query query = queryParser.parse(text);
             TopDocs topDocs = indexSearcher.search(query,1000);
